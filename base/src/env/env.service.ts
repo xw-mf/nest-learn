@@ -6,6 +6,6 @@ export class EnvService {
   constructor(@Inject(ENV_OPTIONS) private readonly options: EnvOptions) {}
 
   describe() {
-    return { prefix: this.options.prefix };
+    return { prefix: this.options.prefix || this.options.fallbackPrefix };
   }
 }

@@ -22,8 +22,8 @@ export class CatsService {
 		return newCat;
 	}
 
-	findAll(): Cat[] {
-		return this.cats;
+	findAll(page: number, pageSize: number): Cat[] {
+		return this.cats.slice((page - 1) * pageSize, page * pageSize);
 	}
 
 	findOne(id: number): Cat | undefined {

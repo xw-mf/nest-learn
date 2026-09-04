@@ -1,19 +1,29 @@
 import {
 	Body,
 	Controller,
+	DefaultValuePipe,
 	Delete,
 	Get,
 	HttpCode,
 	Inject,
 	Param,
+	ParseIntPipe,
 	Post,
 	Put,
 	Query,
+	UseGuards,
+	UsePipes,
+	ValidationPipe,
 } from '@nestjs/common';
 import { CreateCatDto, UpdateCatDto } from './dto/create-cat.dto.js'; // 注意 .js 后缀
 import { CatsService } from './cats.service.js';
+import { CatNotFoundException } from './exception/cat-not-found.exception.js';
+import { RolesGuard } from '../common/guards/roles.guard.js';
+import { Public, Roles } from '../common/decorators/roles.decorator.js';
 
 @Controller('cats')
+@UseGuards(RolesGuard)
+@Roles(['user']) // 类级元数据：整个控制器至少要求 user 角色
 export class CatsController {
 	constructor(
 		private readonly catsService: CatsService,
@@ -21,13 +31,19 @@ export class CatsController {
 	) {}
 
 	@Post()
+	@Roles(['admin']) // 方法级：覆盖类级的 ['user']
+	@UsePipes(new ValidationPipe()) // 方法级绑定（实验B）
 	create(@Body() createCatDto: CreateCatDto) {
+		console.log('DTO 是否为类实例:', createCatDto instanceof CreateCatDto);
 		return this.catsService.create(createCatDto);
 	}
 
 	@Get()
-	findAll() {
-		return this.catsService.findAll();
+	findAll(
+		@Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+		@Query('pageSize', new DefaultValuePipe(10), ParseIntPipe) pageSize: number,
+	) {
+		return this.catsService.findAll(page, pageSize);
 	}
 
 	@Get('/storage-limit')
@@ -37,14 +53,19 @@ export class CatsController {
 
 	// 静态路由在前
 	@Get('breeds')
+	@Public(true) // 方法级：覆盖类级的 ['user']
 	findBreeds() {
 		return ['Persian', 'Siamese', 'Maine Coon'];
 	}
 
-	// 参数路由在后
+	// 参数路由在后（ParseIntPipe：转换+校验一体）
 	@Get(':id')
-	findOne(@Param('id') id: string) {
-		return `This action returns a #${id} cat`;
+	findOne(@Param('id', ParseIntPipe) id: number) {
+		const cat = this.catsService.findOne(id);
+		if (!cat) {
+			throw new CatNotFoundException(id);
+		}
+		return cat;
 	}
 
 	@Put(':id')

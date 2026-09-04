@@ -124,6 +124,21 @@ export class CatsModule {}
 
 静态模块的问题：**消费方无法影响被导入模块的行为**。比如 Config 模块，你想告诉它".env 文件在哪个目录"——静态 import 做不到。
 
+**原理深挖（源码级，已核对 `@nestjs/common` 实现）**：`@Module()` 装饰器的全部逻辑就是把配置对象逐个 `Reflect.defineMetadata` 贴到类上——**模块 = 一个类 + 一包元数据**。静态写法和动态写法的区别仅在于元数据的来源：
+
+```text
+静态：imports: [EnvModule]                → Nest 从类上读装饰器贴的元数据（写代码时写死）
+动态：imports: [EnvModule.register({...})] → Nest 读函数返回的元数据包（运行时算出来）
+```
+
+`DynamicModule` 对象（`{ module, providers, exports, ... }`）和 `@Module()` 的配置对象结构完全一致，只多一个 `module` 属性指向模块类。**动态模块不是新物种，是把"写死元数据"变成"用函数算元数据"**——函数有参数，参数就是 options。
+
+options 流进 Service 的桥，就是 03 章的 `useValue`：函数参数包成 Provider 进容器，Service 用 `@Inject()` 正常注入。所以动态模块 = **03 章自定义 Provider + 04 章模块元数据**的组合，零新概念。
+
+**声明与执行的分离（关键认知）**：`register()` 只**生产配置单**，它自己不注册任何东西；`imports: [...]` 只是**提交配置单**（被 `@Module()` 贴进 ConsumerModule 的元数据）；真正的注册、合并、实例化全部发生在 **`NestFactory.create()` 的装配期**——扫描器遍历 imports，读到 DynamicModule 时取 `module` 属性找到目标类，把动态元数据与类的静态元数据合并，然后才实例化 Provider、解析依赖。你的代码全是"声明"，Nest 的装配器才是"执行者"。这也是为什么配置错误在**启动时**就报错而不是请求时：装配期图就建完了，fail fast。
+
+**判断何时自己写动态模块**：写模块时问一句"消费方需要告诉我点什么吗？"——不需要（纯业务能力）用静态模块；需要（目录、连接串、开关、超时）用动态模块。
+
 动态模块 = 模块类上的一个静态方法，返回 `DynamicModule` 对象（比静态模块多一个 `module` 属性）：
 
 ```typescript
@@ -222,9 +237,17 @@ export class AppModule {}
 ## 动手练习
 
 1. **边界实验复现**：把 `LabModule` 的 `exports: [LabService]` 删掉（保留 `@Global()`），重启——还能注入吗？然后再把 `@Global()` 也删掉重启，对比两次结果。用实验回答：`@Global()` 和 `exports` 缺了哪个都不行？
+
+   - 删 `exports`（保留 `@Global()`）→ 报错 ✅
+
+   - 再删 `@Global()` → 同样报错 ✅
+
 2. **再导出实践**：创建一个 `InfrastructureModule`，import 并 re-export `EnvModule`，让 `ConsumerModule` 改为只 import `InfrastructureModule`，验证 `/api/consumer/env` 依然可用。
-3. **动态模块改造**：给 `EnvModule` 的 `register` 加第二个参数 `fallbackPrefix?: string`，当 `options.prefix` 为空字符串时 `EnvService.describe()` 返回 fallback。要求 options 类型定义在 `env.constants.ts`。
+
+3. **动态模块改造**：给 `EnvOptions` 加可选属性 `fallbackPrefix`（类型定义在 `env.constants.ts`），当 `options.prefix` 为空字符串时 `EnvService.describe()` 返回 fallback。注意体会：**配置项进 options 对象是 Nest 生态惯例**（参考 `ConfigModule.register({ folder })`），不要为它单开一个标量参数——双通道（接口属性 + 独立参数）会造成"两处都能传、合并时互相覆盖"的歧义。
+
 4. **概念题**：03 章讲过"Provider 默认单例"，本章实验 3 却出现了两个实例。两句话内的解释是什么？
+
 5. **概念题**：官方为什么不推荐滥用 `@Global()`？它破坏了什么具体的东西？
 
 ---
