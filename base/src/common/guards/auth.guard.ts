@@ -31,7 +31,7 @@ export class AuthGuard implements CanActivate {
     if (token === 'Bearer admin') {
       (req as unknown as Record<string, unknown>).user = {
         name: 'admin',
-        roles: ['admin'],
+        roles: ['admin', 'user'], // 角色继承：admin 拥有 user 的全部权限
       } satisfies FakeUser;
       return true;
     }

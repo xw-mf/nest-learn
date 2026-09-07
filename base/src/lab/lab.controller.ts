@@ -9,11 +9,19 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { UseFilters } from '@nestjs/common';
+import { UseFilters, UseInterceptors } from '@nestjs/common';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter.js';
+import { LoggingInterceptor } from '../common/interceptors/logging.interceptor.js';
+import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
+import { CacheInterceptor } from '../common/interceptors/cache.interceptor.js';
 import { LabService } from './lab.service.js';
+import { Public } from '../common/decorators/roles.decorator.js';
+import { TimeoutInterceptor } from '../common/interceptors/timeout.interceptor.js';
+import { CatNotFoundException } from '../cats/exception/cat-not-found.exception.js';
 
 @Controller('lab')
+@Public(true)
+@UseInterceptors(LoggingInterceptor, TransformInterceptor) // 两个拦截器：验证嵌套顺序
 export class LabController {
   constructor(
     private readonly labService: LabService,
@@ -26,6 +34,13 @@ export class LabController {
     // 未注册的 token + @Optional()：注入 undefined 而非报错
     @Optional() @Inject('TOTALLY_MISSING') private readonly missing?: unknown,
   ) {}
+
+  @Get('cached')
+  @UseInterceptors(CacheInterceptor)
+  cached() {
+    console.log('[LabController] cached handler 执行了');
+    return ['from-handler'];
+  }
 
   // === 06 章异常实验探针 ===
 
@@ -80,5 +95,24 @@ export class LabController {
       asyncResult: this.asyncResult,
       optionalMissingIsUndefined: this.missing === undefined,
     };
+  }
+
+  @Get('timeout')
+  @Public(true)
+  @UseInterceptors(TimeoutInterceptor)
+  timeout() {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve('timeout');
+      }, 6000);
+    });
+  }
+
+  @Get('timeout-test')
+  @Public(true)
+  @UseInterceptors(TimeoutInterceptor)
+  async timeoutTest() {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    throw new CatNotFoundException(1);
   }
 }

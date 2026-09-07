@@ -12,6 +12,7 @@ import {
 	Put,
 	Query,
 	UseGuards,
+	UseInterceptors,
 	UsePipes,
 	ValidationPipe,
 } from '@nestjs/common';
@@ -20,10 +21,14 @@ import { CatsService } from './cats.service.js';
 import { CatNotFoundException } from './exception/cat-not-found.exception.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import { Public, Roles } from '../common/decorators/roles.decorator.js';
+import { CostTimeInterceptor } from '../common/interceptors/costtime.interceptor.js';
+import { User } from '../common/decorators/user.decorator.js';
+import type { FakeUser } from '../common/guards/auth.guard.js';
 
 @Controller('cats')
 @UseGuards(RolesGuard)
 @Roles(['user']) // 类级元数据：整个控制器至少要求 user 角色
+@UseInterceptors(CostTimeInterceptor)
 export class CatsController {
 	constructor(
 		private readonly catsService: CatsService,
@@ -52,6 +57,11 @@ export class CatsController {
 	}
 
 	// 静态路由在前
+	@Get('me')
+	getMe(@User() user: FakeUser, @User('name') name: string) {
+		return { user, name };
+	}
+
 	@Get('breeds')
 	@Public(true) // 方法级：覆盖类级的 ['user']
 	findBreeds() {

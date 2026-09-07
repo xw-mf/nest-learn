@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { createObserveModule } from '@nestjs/observe';
-import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { CatchAllFilter } from './common/filters/catch-all.filter.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -20,6 +20,7 @@ import { traceMiddleware } from './common/middleware/trace.middleware.js';
 import { costTimeMiddleware } from './common/middleware/costtime.middleware.js';
 import { traceIdMiddleware } from './common/middleware/trace-id.middleware.js';
 import { AuthGuard } from './common/guards/auth.guard.js';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
 
 // 实验用：会抛 401 的认证中间件（验证中间件异常被异常层捕获）
 function authProbeMiddleware(req: Request, res: Response, next: NextFunction) {
@@ -58,7 +59,11 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
-    }
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
+    },
   ],
 })
 export class AppModule implements NestModule {
