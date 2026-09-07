@@ -12,16 +12,18 @@ import type { Request } from 'express';
 import { UseFilters, UseInterceptors } from '@nestjs/common';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter.js';
 import { LoggingInterceptor } from '../common/interceptors/logging.interceptor.js';
-import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
+// import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
 import { CacheInterceptor } from '../common/interceptors/cache.interceptor.js';
 import { LabService } from './lab.service.js';
 import { Public } from '../common/decorators/roles.decorator.js';
 import { TimeoutInterceptor } from '../common/interceptors/timeout.interceptor.js';
 import { CatNotFoundException } from '../cats/exception/cat-not-found.exception.js';
+import { TraceId } from '../common/decorators/trace-id.decorator.js';
 
 @Controller('lab')
 @Public(true)
-@UseInterceptors(LoggingInterceptor, TransformInterceptor) // 两个拦截器：验证嵌套顺序
+// @UseInterceptors(LoggingInterceptor, TransformInterceptor) // 两个拦截器：验证嵌套顺序
+@UseInterceptors(LoggingInterceptor)
 export class LabController {
   constructor(
     private readonly labService: LabService,
@@ -114,5 +116,11 @@ export class LabController {
   async timeoutTest() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     throw new CatNotFoundException(1);
+  }
+
+  @Get('trace-id')
+  @Public(true)
+  traceId(@TraceId() traceId: string, @Req() req: Request) {
+    return traceId;
   }
 }

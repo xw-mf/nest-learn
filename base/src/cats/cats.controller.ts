@@ -24,6 +24,7 @@ import { Public, Roles } from '../common/decorators/roles.decorator.js';
 import { CostTimeInterceptor } from '../common/interceptors/costtime.interceptor.js';
 import { User } from '../common/decorators/user.decorator.js';
 import type { FakeUser } from '../common/guards/auth.guard.js';
+import { TransformUppercasePipe } from '../common/pipes/transform-uppercase.pipe.js';
 
 @Controller('cats')
 @UseGuards(RolesGuard)
@@ -58,7 +59,7 @@ export class CatsController {
 
 	// 静态路由在前
 	@Get('me')
-	getMe(@User() user: FakeUser, @User('name') name: string) {
+	getMe(@User() user: FakeUser, @User('name', TransformUppercasePipe) name: string) {
 		return { user, name };
 	}
 

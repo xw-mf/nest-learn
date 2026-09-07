@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(docker info *)",
+      "Bash(pnpm add *)",
+      "Bash(npx prisma *)",
+      "Bash(docker exec *)"
+    ]
+  }
+}
