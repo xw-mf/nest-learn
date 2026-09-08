@@ -1,0 +1,64 @@
+// 博客 CMS 数据模型（P1 数据建模）
+// 设计决策点见 docs/p1-data-modeling.md
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String // 存 bcrypt 哈希，绝不存明文（P2 展开）
+  nickname  String
+  role      Role      @default(USER)
+  articles  Article[]
+  comments  Comment[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Article {
+  id         Int        @id @default(autoincrement())
+  title      String
+  content    String
+  published  Boolean    @default(false)
+  viewCount  Int        @default(0) // 反范式计数字段：用一致性换读性能（P4 事务保证）
+  deletedAt  DateTime? // 软删除：不物理删行，查询时过滤
+  author     User       @relation(fields: [authorId], references: [id])
+  authorId   Int
+  tags       Tag[] // N:M 隐式中间表
+  comments   Comment[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([authorId]) // 外键查询走索引
+  @@index([published, createdAt]) // 首页列表：已发布 + 按时间倒序
+}
+
+model Tag {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  articles Article[]
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  article   Article  @relation(fields: [articleId], references: [id])
+  articleId Int
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt DateTime @default(now())
+
+  @@index([articleId]) // 按文章查评论是高频操作
+}
