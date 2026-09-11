@@ -188,6 +188,49 @@ export class PrismaModule {}
 
 ## 练习参考答案
 
+**练习 1（`_ArticleToTag` 中间表结构）**：
+
+```sql
+CREATE TABLE "_ArticleToTag" (
+    "A" INTEGER NOT NULL,  -- 指向 Article.id
+    "B" INTEGER NOT NULL,  -- 指向 Tag.id
+    CONSTRAINT "_ArticleToTag_AB_pkey" PRIMARY KEY ("A","B")  -- 复合主键
+);
+CREATE INDEX "_ArticleToTag_B_index" ON "_ArticleToTag"("B");
+-- 另有两个外键约束，ON DELETE CASCADE
+```
+
+- **复合主键 (A,B)**：防同一对关联重复出现（防脏数据）；主键自带索引，"按文章查标签"（按 A）走它；
+- **单独的 B 索引**：复合索引遵循**最左前缀原则**——`(A,B)` 对"按 B 查"无效，而"查标签下有哪些文章"是反方向查询，所以单列索引；
+- **`ON DELETE CASCADE`**：删文章/标签时关联行自动清理，不留孤儿。对比 `Article.authorId` 是 `ON DELETE RESTRICT`（禁止删掉还有文章的用户）——关联关系随手清、主数据防误删，两种策略是有意的。
+
+**练习 2（加 Category 模型的三个要点）**：
+
+1. **非空外键加在已有数据的表上会失败**（PostgreSQL 不允许给已有行加"非空无默认值"列）。处理路径：
+   - 业务允许为空 → 改可空（`categoryId Int?` + `category Category?`），首选；
+   - 必须非空 → **三步走**：加可空列 → 回填数据（建兜底分类 + UPDATE）→ 再改非空。铁律：**结构变更和数据迁移分开做**；
+   - 有合理兜底值 → `migrate dev --create-only` 后手动在 SQL 里加 `DEFAULT`；
+   - 本地开发无所谓 → `migrate reset`（生产等于删库，禁用）。
+2. **`@unique` 自带唯一索引**，再写 `@@index([name])` 是重复索引（白白拖慢写入），删掉；
+3. **`Category.articles`（数组侧）是纯虚拟字段**：不产生列，作用是把关系配对 + 支持反向 `include` 查询。关系声明的分工（`author`/`authorId` 同构）：
+
+| 字段 | 角色 | 数据库产物 |
+|---|---|---|
+| `categoryId Int?` | 存储：真持有外键值 | 列 |
+| `category Category?` | 声明：接线 + 查询入口 | 外键约束 |
+
+外键列永远在"多"的一侧；"一"的一侧（`articles`）永远虚拟。
+
+**练习 3（查看索引的命令）**：
+
+```bash
+docker exec nest-blog-db psql -U blog -d blog -c "\di"   # 一次性列出所有索引
+# 或进交互式：docker exec -it nest-blog-db psql -U blog -d blog
+# \d "Article" 可查看单表完整结构（列 + 索引 + 外键）
+```
+
+对照映射：`User_email_key` ← `@unique`；`Article_authorId_idx` ← `@@index`；`_ArticleToTag_AB_pkey` ← 复合主键自带。
+
 **练习 4**：核心差异是**不一致的代价**。浏览量错几个，没有任何人受损（容忍度高），而它的读频率极高（每篇文章展示都读）——用一致性换读性能划算。余额错一分钱都是资损事故（容忍度为零），必须永远精确——宁可每次算/用事务保护，也绝不接受"大概对"。判断框架：**"错了会怎样" + "读的频率有多高"**。
 
 **练习 5**：① **不可重复/不可回滚**：手改的表没有记录，新环境（测试库、新同事、灾备重建）无法重建出同样结构，出问题也无法精确回到改之前；② **代码与库结构失联**：应用代码期望的 schema 和实际 schema 产生偏差时，错误会以各种诡异的形式在运行时才暴露；③ 多人协作时无人能 review 这次变更。迁移工具把"改结构"变成了有版本、有审查、可回滚的工程行为。

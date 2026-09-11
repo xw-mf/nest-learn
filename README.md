@@ -25,13 +25,15 @@
 
 | 阶段 | 文档 | 思维主题 | 状态 |
 |---|---|---|---|
-| P1 | [数据建模](blog/docs/p1-data-modeling.md) | 持久化思维：关系设计、范式取舍、迁移 | ✅ 数据库已通 |
-| P2 | 认证体系（JWT 双 token） | 信任边界：客户端不可信 | ⬜ |
-| P3 | 授权体系（RBAC + 资源归属） | 越权思维：横向/纵向越权 | ⬜ |
-| P4 | 核心业务（文章/评论/标签） | 一致性思维：事务、N+1 | ⬜ |
-| P5 | 缓存性能（Redis） | 缓存思维：穿透/击穿/雪崩 | ⬜ |
-| P6 | 可靠性（幂等/限流/异步） | 并发思维 | ⬜ |
-| P7 | 上线（日志/Swagger/Docker） | 运维思维 | ⬜ |
+| P1 | [数据建模](blog/docs/p1-data-modeling.md) | 持久化思维：关系设计、范式取舍、迁移 | ✅ |
+| P2 | [认证体系](blog/docs/p2-authentication.md) | 信任边界：客户端不可信 | ✅ |
+| P3 | [授权体系](blog/docs/p3-authorization.md) | 越权思维：横向/纵向越权 | ✅ |
+| P4 | [一致性](blog/docs/p4-consistency.md) | 一致性思维：事务、N+1 | ✅ |
+| P5 | [缓存性能](blog/docs/p5-cache.md) | 缓存思维：穿透/击穿/雪崩 | ✅ |
+| P6 | [可靠性](blog/docs/p6-reliability.md) | 幂等与并发控制 | ✅ |
+| P7 | [上线](blog/docs/p7-deployment.md) | 运维思维：环境分离、Docker 化、健康检查 | ✅ 全栈容器验收通过 |
+
+另附：[Prisma 查询速查表](blog/docs/prisma-query-cheatsheet.md)（SQL↔Prisma 对照 + 类型工程）
 
 ## 关键原则
 

@@ -17,5 +17,33 @@ services:
       timeout: 3s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: nest-blog-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - blog-redis-data:/data
+
+  app:
+    build: .
+    container_name: nest-blog-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      # 容器网络内用服务名互联（不再是 localhost！）
+      DATABASE_URL: postgresql://blog:blog123@postgres:5432/blog
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-only-secret-change-me-in-production
+      PORT: 3000
+    ports:
+      - '3001:3000' # 宿主 3001 → 容器 3000（避开宿主已占的 3000）
+
 volumes:
   blog-pgdata:
+  blog-redis-data:
